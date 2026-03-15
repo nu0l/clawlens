@@ -10,8 +10,24 @@ import (
 )
 
 type openClawConfig struct {
-	ShellAccess bool   `json:"shellAccess"`
-	GatewayBind string `json:"gatewayBind"`
+	Tools struct {
+		Exec struct {
+			Security string `json:"security"`
+			Ask      string `json:"ask"`
+		} `json:"exec"`
+	} `json:"tools"`
+	Gateway struct {
+		Port uint16 `json:"port"`
+		Bind string `json:"bind"`
+		Auth struct {
+			Mode     string `json:"mode"`
+			Token    string `json:"token"`
+			Password string `json:"password"`
+		} `json:"auth"`
+		Tailscale struct {
+			Mode string `json:"mode"`
+		} `json:"tailscale"`
+	} `json:"gateway"`
 }
 
 // ScanConfig parses the OpenClaw configuration and checks for risky settings.
@@ -43,27 +59,27 @@ func ScanConfig(homeDir string) ([]Finding, error) {
 		return findings, nil
 	}
 
-	// Check shell access
-	if config.ShellAccess {
+	// Check exec security
+	if config.Tools.Exec.Security == "full" {
 		findings = append(findings, Finding{
 			Category:    CatConfig,
-			Title:       "Shell 访问已启用",
-			Description: "OpenClaw 配置了 Shell 访问权限，允许执行任意命令，存在严重安全风险。",
-			Remediation: "立即在配置文件中将 shellAccess 设置为 false。如业务确需 Shell 功能，应通过白名单限制可执行的命令，并启用操作审计日志。",
+			Title:       "允许执行任意 Shell 命令",
+			Description: "OpenClaw 配置为允许执行所有 Shell 命令，存在严重安全隐患。",
+			Remediation: "修改配置文件，将 tools.exec.security 的值修改为 allowlist，仅允许执行特定命令，或修改为 deny，禁止执行所有系统命令。",
 			Severity:    Critical,
-			Details:     map[string]string{"setting": "shellAccess", "value": "true"},
+			Details:     map[string]string{"setting": "tools.exec.security", "value": "full"},
 		})
 	}
 
 	// Check gateway bind address
-	if bind := config.GatewayBind; strings.HasPrefix(bind, "0.0.0.0") || strings.HasPrefix(bind, "[::]") || strings.HasPrefix(bind, ":") {
+	if bind := config.Gateway.Bind; strings.HasPrefix(bind, "0.0.0.0") || strings.HasPrefix(bind, "[::]") || strings.HasPrefix(bind, ":") {
 		findings = append(findings, Finding{
 			Category:    CatConfig,
 			Title:       "网关绑定到所有网络接口",
 			Description: "OpenClaw 网关配置为监听所有网络接口，使实例暴露在网络中，可从 localhost 以外访问。",
-			Remediation: "将 gatewayBind 修改为 127.0.0.1 以仅允许本地访问。如需远程访问，应通过防火墙规则或 VPN 限制来源 IP，并启用身份认证。",
+			Remediation: "修改配置文件，将 gateway.bind 修改为 127.0.0.1 以仅允许本地访问。如需远程访问，应通过防火墙规则或 VPN 限制来源 IP，并启用身份认证。",
 			Severity:    Critical,
-			Details:     map[string]string{"setting": "gatewayBind", "value": bind},
+			Details:     map[string]string{"setting": "gateway.bind", "value": bind},
 		})
 	}
 
