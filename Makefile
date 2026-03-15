@@ -4,7 +4,7 @@ LDFLAGS := -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)"
 BINARY := clawlens
 BUILD_DIR := build
 
-.PHONY: build build-all test clean
+.PHONY: build build-all test clean release
 
 build:
 	CGO_ENABLED=0 go build $(LDFLAGS) -o $(BINARY) ./cmd/clawlens/
@@ -23,3 +23,6 @@ test:
 clean:
 	rm -f $(BINARY)
 	rm -rf $(BUILD_DIR)
+
+release:
+	./scripts/release.sh v$(VERSION)
