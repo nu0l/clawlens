@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a defect or regression in ClawLens
+title: "[bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened and what did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: Include commands, sample files, and exact steps.
+      placeholder: |
+        1. Run `clawlens ...`
+        2. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, architecture, Go version, and ClawLens version.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      description: Paste relevant output, errors, or screenshots.
+

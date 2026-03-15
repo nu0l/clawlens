@@ -1,0 +1,22 @@
+# Binaries
+clawlens
+clawlens.exe
+/dist/
+/build/
+tmp/
+
+# Test output
+*.html
+!internal/report/template/report.html
+clawlens-report-*.json
+report.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

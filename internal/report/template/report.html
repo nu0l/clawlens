@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.ProductName}} Report</title>
+<style>
+  :root {
+    --green: #22c55e; --green-bg: #f0fdf4; --green-border: #bbf7d0;
+    --yellow: #eab308; --yellow-bg: #fefce8; --yellow-border: #fef08a;
+    --red: #ef4444; --red-bg: #fef2f2; --red-border: #fecaca;
+    --blue: #3b82f6; --blue-bg: #eff6ff; --blue-border: #bfdbfe;
+    --gray: #6b7280; --gray-bg: #f9fafb; --gray-border: #e5e7eb;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f3f4f6; color: #1f2937; line-height: 1.6; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 { font-size: 28px; font-weight: 700; }
+  header .subtitle { color: var(--gray); font-size: 14px; }
+  .badge { display: inline-block; padding: 6px 20px; border-radius: 20px; font-weight: 700; font-size: 18px; color: #fff; margin: 16px 0; }
+  .badge-clean { background: var(--green); }
+  .badge-info { background: var(--blue); }
+  .badge-warning { background: var(--yellow); color: #1f2937; }
+  .badge-critical { background: var(--red); }
+  .meta { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; font-size: 13px; color: var(--gray); margin-bottom: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  .stat-card { background: #fff; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid var(--gray-border); }
+  .stat-card .count { font-size: 32px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: var(--gray); text-transform: uppercase; }
+  .stat-critical .count { color: var(--red); }
+  .stat-warning .count { color: var(--yellow); }
+  .stat-info .count { color: var(--blue); }
+  .stat-clean .count { color: var(--green); }
+  .section { margin-bottom: 24px; }
+  .section h2 { font-size: 18px; margin-bottom: 12px; text-transform: capitalize; }
+  .issues { background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+  .issues h2 { font-size: 18px; margin-bottom: 8px; }
+  .issues p { font-size: 14px; color: #9a3412; margin-bottom: 12px; }
+  .issues ul { margin-left: 18px; color: #7c2d12; }
+  .issues li { margin-bottom: 6px; }
+  .finding { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 8px; border-left: 4px solid var(--gray-border); }
+  .finding-critical { border-left-color: var(--red); background: var(--red-bg); }
+  .finding-warning { border-left-color: var(--yellow); background: var(--yellow-bg); }
+  .finding-info { border-left-color: var(--blue); background: var(--blue-bg); }
+  .finding-header { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .finding-header h3 { font-size: 15px; flex: 1; }
+  .severity-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; color: #fff; }
+  .tag-critical { background: var(--red); }
+  .tag-warning { background: var(--yellow); color: #1f2937; }
+  .tag-info { background: var(--blue); }
+  .finding p { font-size: 14px; color: #4b5563; margin-top: 4px; }
+  .details { margin-top: 12px; display: none; }
+  .details.open { display: block; }
+  .details table { width: 100%; font-size: 13px; border-collapse: collapse; }
+  .details td { padding: 4px 8px; border-bottom: 1px solid var(--gray-border); }
+  .details td:first-child { font-weight: 600; width: 120px; color: var(--gray); }
+  .toggle { font-size: 12px; color: var(--blue); cursor: pointer; user-select: none; }
+  .no-findings { text-align: center; padding: 48px; color: var(--green); font-size: 20px; font-weight: 600; }
+  footer { text-align: center; color: var(--gray); font-size: 12px; margin-top: 32px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>{{.ProductName}} Report</h1>
+    <div class="subtitle">OpenClaw Security Scanner v{{.Version}}</div>
+    {{if eq .Result.MaxSeverity 0}}<div class="badge badge-clean">CLEAN</div>
+    {{else if eq .Result.MaxSeverity 1}}<div class="badge badge-info">INFO</div>
+    {{else if eq .Result.MaxSeverity 2}}<div class="badge badge-warning">WARNING</div>
+    {{else}}<div class="badge badge-critical">CRITICAL</div>{{end}}
+  </header>
+
+  <div class="meta">
+    <span>Host: {{.Result.Hostname}}</span>
+    <span>OS: {{.Result.OS}}/{{.Result.Arch}}</span>
+    <span>Scanned: {{.Result.ScanTime.Format "2006-01-02 15:04:05"}}</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card stat-critical"><div class="count">{{.CriticalCount}}</div><div class="label">Critical</div></div>
+    <div class="stat-card stat-warning"><div class="count">{{.WarningCount}}</div><div class="label">Warning</div></div>
+    <div class="stat-card stat-info"><div class="count">{{.InfoCount}}</div><div class="label">Info</div></div>
+    <div class="stat-card stat-clean"><div class="count">{{.TotalFindings}}</div><div class="label">Total</div></div>
+  </div>
+
+  {{if .Result.Issues}}
+  <section class="issues">
+    <h2>Scan Issues</h2>
+    <p>Some checks could not be completed. Results may be incomplete for the affected areas.</p>
+    <ul>
+      {{range .Result.Issues}}
+      <li><strong>{{.Check}}</strong>: {{.Error}}</li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+
+  {{if eq (len .Result.Findings) 0}}
+  <div class="no-findings">No OpenClaw installation detected. System is clean.</div>
+  {{else}}
+  {{range .Groups}}
+  <div class="section">
+    <h2>{{.Label}}</h2>
+    {{range .Findings}}
+    <div class="finding finding-{{severityClass .Severity}}">
+      <div class="finding-header"{{if .Details}} onclick="this.parentElement.querySelector('.details').classList.toggle('open')"{{end}}>
+        <h3>{{.Title}}</h3>
+        <span class="severity-tag tag-{{severityClass .Severity}}">{{.Severity}}</span>
+        {{if .Details}}<span class="toggle">details</span>{{end}}
+      </div>
+      <p>{{.Description}}</p>
+      {{if .Details}}
+      <div class="details">
+        <table>{{range $k, $v := .Details}}<tr><td>{{$k}}</td><td>{{$v}}</td></tr>{{end}}</table>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+  {{end}}
+
+  <footer>Generated by {{.ProductName}} v{{.Version}}</footer>
+</div>
+</body>
+</html>
