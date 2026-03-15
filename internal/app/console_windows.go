@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	kernel32                       = syscall.NewLazyDLL("kernel32.dll")
-	procSetConsoleOutputCP         = kernel32.NewProc("SetConsoleOutputCP")
-	procGetConsoleMode             = kernel32.NewProc("GetConsoleMode")
-	procSetConsoleMode             = kernel32.NewProc("SetConsoleMode")
+	kernel32               = syscall.NewLazyDLL("kernel32.dll")
+	procSetConsoleOutputCP = kernel32.NewProc("SetConsoleOutputCP")
+	procGetConsoleMode     = kernel32.NewProc("GetConsoleMode")
+	procSetConsoleMode     = kernel32.NewProc("SetConsoleMode")
 )
 
 const (
