@@ -39,10 +39,16 @@ func (p *darwinPlatform) FindServices() ([]ServiceInfo, error) {
 	var services []ServiceInfo
 	var issue error
 
-	home, _ := os.UserHomeDir()
+	// Check systemd LaunchDaemons
 	plistPaths := []string{
-		filepath.Join(home, "Library/LaunchAgents/com.openclaw.gateway.plist"),
-		"/Library/LaunchDaemons/com.openclaw.gateway.plist",
+		"/Library/LaunchDaemons/ai.openclaw.gateway.plist",
+	}
+	// Check user LaunchAgents
+	homeDirs := findAllUserHomeDirs()
+	for _, home := range homeDirs {
+		plistPaths = append(plistPaths,
+			filepath.Join(home, "Library/LaunchAgents/ai.openclaw.gateway.plist"),
+		)
 	}
 
 	for _, path := range plistPaths {
@@ -62,4 +68,35 @@ func (p *darwinPlatform) FindServices() ([]ServiceInfo, error) {
 
 func (p *darwinPlatform) OpenBrowser(url string) error {
 	return exec.Command("open", url).Start()
+}
+
+// findAllUserHomeDirs returns all user home directories.
+func findAllUserHomeDirs() []string {
+	var homes []string
+	seen := make(map[string]bool)
+
+	usersDir := "/Users"
+
+	entries, err := os.ReadDir("/Users")
+	if err != nil {
+		return homes
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Skip system/default directories
+		if name == "Shared" || strings.HasPrefix(name, ".") {
+			continue
+		}
+		home := filepath.Join(usersDir, name)
+		if !seen[home] {
+			seen[home] = true
+			homes = append(homes, home)
+		}
+	}
+
+	return homes
 }

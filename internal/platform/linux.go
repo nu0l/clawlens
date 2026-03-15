@@ -3,6 +3,7 @@
 package platform
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -45,11 +46,14 @@ func (p *linuxPlatform) FindServices() ([]ServiceInfo, error) {
 		"/etc/systemd/system/openclaw.service",
 		"/etc/systemd/system/openclaw-gateway.service",
 	}
-	home, _ := os.UserHomeDir()
-	unitPaths = append(unitPaths,
-		filepath.Join(home, ".config/systemd/user/openclaw.service"),
-		filepath.Join(home, ".config/systemd/user/openclaw-gateway.service"),
-	)
+	// Check user unit files
+	homeDirs := findAllUserHomeDirs()
+	for _, home := range homeDirs {
+		unitPaths = append(unitPaths,
+			filepath.Join(home, ".config/systemd/user/openclaw.service"),
+			filepath.Join(home, ".config/systemd/user/openclaw-gateway.service"),
+		)
+	}
 
 	for _, path := range unitPaths {
 		if _, err := os.Stat(path); err == nil {
@@ -93,4 +97,34 @@ func systemctlState(user bool, name string) (string, error) {
 		return "", err
 	}
 	return "", nil
+}
+
+// findAllUserHomeDirs reads /etc/passwd and returns all user home directories.
+func findAllUserHomeDirs() []string {
+	var homes []string
+	seen := make(map[string]bool)
+
+	file, err := os.Open("/etc/passwd")
+	if err != nil {
+		return homes
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Format: username:x:uid:gid:gecos:home:shell
+		fields := strings.Split(line, ":")
+		if len(fields) < 6 {
+			continue
+		}
+		home := fields[5]
+		if home == "" || seen[home] {
+			continue
+		}
+		seen[home] = true
+		homes = append(homes, home)
+	}
+
+	return homes
 }
