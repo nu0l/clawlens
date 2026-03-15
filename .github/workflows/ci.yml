@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          autocrlf: false
 
       - name: Setup Go
         uses: actions/setup-go@v5
