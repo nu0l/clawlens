@@ -1,15 +1,9 @@
 package platform
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 )
-
-func defaultOpenClawHome() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".openclaw")
-}
 
 func parseUnixPSOutput(output []byte) []ProcessInfo {
 	var processes []ProcessInfo

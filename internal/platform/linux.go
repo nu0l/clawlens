@@ -19,7 +19,17 @@ func New() Platform {
 }
 
 func (p *linuxPlatform) OpenClawHome() string {
-	return defaultOpenClawHome()
+	// Try to find .openclaw in all user home directories
+	homeDirs := findAllUserHomeDirs()
+	for _, home := range homeDirs {
+		openclawDir := filepath.Join(home, ".openclaw")
+		if info, err := os.Stat(openclawDir); err == nil && info.IsDir() {
+			return openclawDir
+		}
+	}
+	// Fallback to current user's home directory
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".openclaw")
 }
 
 func (p *linuxPlatform) FindProcesses() ([]ProcessInfo, error) {
