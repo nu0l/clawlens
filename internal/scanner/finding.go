@@ -40,6 +40,7 @@ const (
 	CatService      Category = "service"
 	CatConfig       Category = "config"
 	CatCredentials  Category = "credentials"
+	CatNetwork      Category = "network"
 )
 
 func (c Category) Label() string {
@@ -54,6 +55,8 @@ func (c Category) Label() string {
 		return "Configuration"
 	case CatCredentials:
 		return "Credentials"
+	case CatNetwork:
+		return "Network"
 	default:
 		return string(c)
 	}
@@ -160,6 +163,8 @@ func categoryRank(category Category) int {
 		return 3
 	case CatCredentials:
 		return 4
+	case CatNetwork:
+		return 5
 	default:
 		return 99
 	}

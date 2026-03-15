@@ -110,5 +110,11 @@ func defaultChecks() []scanCheck {
 				return ScanCredentials(ctx.HomeDir)
 			},
 		},
+		{
+			name: "network",
+			run: func(ctx scanContext) ([]Finding, error) {
+				return ScanNetwork(nil)
+			},
+		},
 	}
 }
