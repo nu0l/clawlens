@@ -16,6 +16,7 @@ func ScanProcesses(plat platform.Platform) ([]Finding, error) {
 			Category:    CatProcess,
 			Title:       "OpenClaw 进程正在运行",
 			Description: "检测到 OpenClaw 相关进程正在活跃运行。",
+			Remediation: "如非授权运行，应立即终止该进程（kill PID）。排查进程启动来源，检查是否有计划任务或开机启动项自动拉起。",
 			Severity:    Warning,
 			Details: map[string]string{
 				"pid":     proc.PID,

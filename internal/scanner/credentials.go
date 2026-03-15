@@ -34,6 +34,7 @@ func ScanCredentials(homeDir string) ([]Finding, error) {
 		Category:    CatCredentials,
 		Title:       "凭证目录已存在",
 		Description: "凭证目录中包含文件，可能含有 API 密钥或令牌。",
+		Remediation: "审查凭证文件内容，轮换已暴露的密钥和令牌。将凭证迁移到专用的密钥管理服务（如 Vault），并从磁盘上安全删除明文凭证。",
 		Severity:    Warning,
 		Details:     map[string]string{"path": credsDir, "file_count": strconv.Itoa(len(files))},
 	})
@@ -55,6 +56,7 @@ func ScanCredentials(homeDir string) ([]Finding, error) {
 				Category:    CatCredentials,
 				Title:       "凭证文件权限过于宽松",
 				Description: "凭证文件可被系统上任意用户读取。",
+				Remediation: "立即执行 chmod 600 收紧文件权限，确保仅文件所有者可读写。同时轮换该文件中的所有密钥和令牌，因为它们可能已被其他用户读取。",
 				Severity:    Critical,
 				Details: map[string]string{
 					"path":        path,

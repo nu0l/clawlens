@@ -193,6 +193,18 @@ func printFindings(w io.Writer, result *scanner.ScanResult, color bool) {
 		icon, tagColor := severityStyle(finding.Severity)
 		tag := colorize(fmt.Sprintf(" %s ", finding.Severity), tagColor, color)
 		fmt.Fprintf(w, "  %s %s  %s\n", icon, tag, finding.Title)
+		fmt.Fprintf(w, "      %s\n", colorize(finding.Description, colorGray, color))
+		for k, v := range finding.Details {
+			fmt.Fprintf(w, "      %s %s\n",
+				colorize(k+":", colorCyan, color),
+				v)
+		}
+		if finding.Remediation != "" {
+			fmt.Fprintf(w, "      %s %s\n",
+				colorize("治理:", colorBoldGreen, color),
+				finding.Remediation)
+		}
+		fmt.Fprintln(w)
 	}
 
 	counts := result.CountBySeverity()

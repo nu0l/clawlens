@@ -50,6 +50,8 @@
   .tag-warning { background: var(--yellow); color: #1f2937; }
   .tag-info { background: var(--blue); }
   .finding p { font-size: 14px; color: #4b5563; margin-top: 4px; }
+  .remediation { margin-top: 8px; padding: 8px 12px; background: #f0fdf4; border: 1px solid var(--green-border); border-radius: 6px; font-size: 13px; color: #166534; }
+  .remediation strong { color: #15803d; }
   .details { margin-top: 12px; display: none; }
   .details.open { display: block; }
   .details table { width: 100%; font-size: 13px; border-collapse: collapse; }
@@ -104,15 +106,16 @@
     <h2>{{.Label}}</h2>
     {{range .Findings}}
     <div class="finding finding-{{severityClass .Severity}}">
-      <div class="finding-header"{{if .Details}} onclick="this.parentElement.querySelector('.details').classList.toggle('open')"{{end}}>
+      <div class="finding-header"{{if or .Details .Remediation}} onclick="this.parentElement.querySelector('.details').classList.toggle('open')"{{end}}>
         <h3>{{.Title}}</h3>
         <span class="severity-tag tag-{{severityClass .Severity}}">{{.Severity}}</span>
-        {{if .Details}}<span class="toggle">详情</span>{{end}}
+        {{if or .Details .Remediation}}<span class="toggle">详情</span>{{end}}
       </div>
       <p>{{.Description}}</p>
-      {{if .Details}}
+      {{if or .Details .Remediation}}
       <div class="details">
-        <table>{{range $k, $v := .Details}}<tr><td>{{$k}}</td><td>{{$v}}</td></tr>{{end}}</table>
+        {{if .Details}}<table>{{range $k, $v := .Details}}<tr><td>{{$k}}</td><td>{{$v}}</td></tr>{{end}}</table>{{end}}
+        {{if .Remediation}}<div class="remediation"><strong>治理措施：</strong>{{.Remediation}}</div>{{end}}
       </div>
       {{end}}
     </div>

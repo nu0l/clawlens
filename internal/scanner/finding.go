@@ -67,6 +67,7 @@ type Finding struct {
 	Category    Category          `json:"category"`
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
+	Remediation string            `json:"remediation,omitempty"`
 	Severity    Severity          `json:"severity"`
 	Details     map[string]string `json:"details,omitempty"`
 }

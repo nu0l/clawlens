@@ -37,6 +37,7 @@ func scanGatewayPort(dial dialFunc) ([]Finding, error) {
 		Category:    CatNetwork,
 		Title:       "网关端口已开放",
 		Description: fmt.Sprintf("OpenClaw 网关正在监听端口 %d，该端口暴露了 HTTP API，可能允许远程控制 Agent。", gatewayPort),
+		Remediation: fmt.Sprintf("如非必要，关闭网关服务或通过防火墙封锁端口 %d。如需保留，确保仅绑定 127.0.0.1 并启用访问认证。", gatewayPort),
 		Severity:    Warning,
 		Details:     map[string]string{"port": fmt.Sprintf("%d", gatewayPort), "address": addr},
 	})
@@ -53,6 +54,7 @@ func scanGatewayPort(dial dialFunc) ([]Finding, error) {
 		Category:    CatNetwork,
 		Title:       "网关暴露到外部网络",
 		Description: fmt.Sprintf("OpenClaw 网关端口 %d 在所有网络接口 (0.0.0.0) 上可达，已暴露到整个网络。", gatewayPort),
+		Remediation: "立即将网关绑定地址修改为 127.0.0.1，或通过 iptables/firewalld 限制入站流量。检查是否已有未授权的外部连接，并审计访问日志。",
 		Severity:    Critical,
 		Details:     map[string]string{"port": fmt.Sprintf("%d", gatewayPort), "address": allAddr},
 	})
