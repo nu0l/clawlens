@@ -32,8 +32,8 @@ func ScanCredentials(homeDir string) ([]Finding, error) {
 
 	findings = append(findings, Finding{
 		Category:    CatCredentials,
-		Title:       "Credentials directory exists",
-		Description: "The credentials directory contains files that may include API keys or tokens.",
+		Title:       "凭证目录已存在",
+		Description: "凭证目录中包含文件，可能含有 API 密钥或令牌。",
 		Severity:    Warning,
 		Details:     map[string]string{"path": credsDir, "file_count": strconv.Itoa(len(files))},
 	})
@@ -53,8 +53,8 @@ func ScanCredentials(homeDir string) ([]Finding, error) {
 		if mode&fs.FileMode(0o004) != 0 {
 			findings = append(findings, Finding{
 				Category:    CatCredentials,
-				Title:       "Credential file has world-readable permissions",
-				Description: "A credential file can be read by any user on the system.",
+				Title:       "凭证文件权限过于宽松",
+				Description: "凭证文件可被系统上任意用户读取。",
 				Severity:    Critical,
 				Details: map[string]string{
 					"path":        path,

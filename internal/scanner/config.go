@@ -31,8 +31,8 @@ func ScanConfig(homeDir string) ([]Finding, error) {
 	if err := json.Unmarshal(data, &config); err != nil {
 		findings = append(findings, Finding{
 			Category:    CatConfig,
-			Title:       "Configuration file could not be parsed",
-			Description: "OpenClaw configuration exists but could not be parsed. Risk evaluation may be incomplete.",
+			Title:       "配置文件解析失败",
+			Description: "OpenClaw 配置文件存在但无法解析，风险评估可能不完整。",
 			Severity:    Warning,
 			Details: map[string]string{
 				"path":  configPath,
@@ -46,8 +46,8 @@ func ScanConfig(homeDir string) ([]Finding, error) {
 	if config.ShellAccess {
 		findings = append(findings, Finding{
 			Category:    CatConfig,
-			Title:       "Shell access enabled",
-			Description: "OpenClaw is configured with shell access enabled. This allows arbitrary command execution and is a critical security risk.",
+			Title:       "Shell 访问已启用",
+			Description: "OpenClaw 配置了 Shell 访问权限，允许执行任意命令，存在严重安全风险。",
 			Severity:    Critical,
 			Details:     map[string]string{"setting": "shellAccess", "value": "true"},
 		})
@@ -57,8 +57,8 @@ func ScanConfig(homeDir string) ([]Finding, error) {
 	if bind := config.GatewayBind; strings.HasPrefix(bind, "0.0.0.0") || strings.HasPrefix(bind, "[::]") || strings.HasPrefix(bind, ":") {
 		findings = append(findings, Finding{
 			Category:    CatConfig,
-			Title:       "Gateway bound to all interfaces",
-			Description: "The OpenClaw gateway is configured to listen on every interface, exposing it to the network. This makes the instance reachable beyond localhost.",
+			Title:       "网关绑定到所有网络接口",
+			Description: "OpenClaw 网关配置为监听所有网络接口，使实例暴露在网络中，可从 localhost 以外访问。",
 			Severity:    Critical,
 			Details:     map[string]string{"setting": "gatewayBind", "value": bind},
 		})

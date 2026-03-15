@@ -16,8 +16,8 @@ func ScanFilesystem(homeDir string) ([]Finding, error) {
 	if info, err := os.Stat(homeDir); err == nil && info.IsDir() {
 		findings = append(findings, Finding{
 			Category:    CatInstallation,
-			Title:       "OpenClaw installation detected",
-			Description: "The OpenClaw home directory exists.",
+			Title:       "检测到 OpenClaw 安装",
+			Description: "OpenClaw 主目录已存在。",
 			Severity:    Info,
 			Details:     map[string]string{"path": homeDir},
 		})
@@ -33,8 +33,8 @@ func ScanFilesystem(homeDir string) ([]Finding, error) {
 	if _, err := os.Stat(configPath); err == nil {
 		findings = append(findings, Finding{
 			Category:    CatInstallation,
-			Title:       "Configuration file found",
-			Description: "OpenClaw configuration file exists.",
+			Title:       "发现配置文件",
+			Description: "OpenClaw 配置文件已存在。",
 			Severity:    Info,
 			Details:     map[string]string{"path": configPath},
 		})
@@ -45,8 +45,8 @@ func ScanFilesystem(homeDir string) ([]Finding, error) {
 	if info, err := os.Stat(workspacePath); err == nil && info.IsDir() {
 		findings = append(findings, Finding{
 			Category:    CatInstallation,
-			Title:       "Workspace directory found",
-			Description: "OpenClaw workspace directory exists.",
+			Title:       "发现工作区目录",
+			Description: "OpenClaw 工作区目录已存在。",
 			Severity:    Info,
 			Details:     map[string]string{"path": workspacePath},
 		})
@@ -59,8 +59,8 @@ func ScanFilesystem(homeDir string) ([]Finding, error) {
 		if len(matches) > 0 {
 			findings = append(findings, Finding{
 				Category:    CatInstallation,
-				Title:       "Agent sessions found",
-				Description: "Active or historical agent session directories exist.",
+				Title:       "发现 Agent 会话",
+				Description: "存在活跃或历史的 Agent 会话目录。",
 				Severity:    Info,
 				Details:     map[string]string{"count": strconv.Itoa(len(matches)), "path": agentsPath},
 			})
@@ -76,8 +76,8 @@ func ScanFilesystem(homeDir string) ([]Finding, error) {
 		if _, err := os.Stat(path); err == nil {
 			findings = append(findings, Finding{
 				Category:    CatInstallation,
-				Title:       "Plugin artifacts detected",
-				Description: "Plugin-related files found. These may come from untrusted ClawHub sources.",
+				Title:       "检测到插件文件",
+				Description: "发现插件相关文件，可能来自未经信任的 ClawHub 源。",
 				Severity:    Warning,
 				Details:     map[string]string{"path": path},
 			})

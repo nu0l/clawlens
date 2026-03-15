@@ -24,7 +24,7 @@ func TestScannerRunCollectsIssuesAndSortsFindings(t *testing.T) {
 			run: func(scanContext) ([]Finding, error) {
 				return []Finding{{
 					Category: CatInstallation,
-					Title:    "Installation found",
+					Title:    "检测到安装",
 					Severity: Info,
 				}}, nil
 			},
@@ -34,9 +34,9 @@ func TestScannerRunCollectsIssuesAndSortsFindings(t *testing.T) {
 			run: func(scanContext) ([]Finding, error) {
 				return []Finding{{
 					Category: CatProcess,
-					Title:    "Gateway process running",
+					Title:    "网关进程正在运行",
 					Severity: Critical,
-				}}, errors.New("ps unavailable")
+				}}, errors.New("ps 不可用")
 			},
 		},
 	)
@@ -62,7 +62,7 @@ func TestScannerRunCollectsIssuesAndSortsFindings(t *testing.T) {
 	if got, want := result.MaxSeverity, Critical; got != want {
 		t.Fatalf("MaxSeverity = %v, want %v", got, want)
 	}
-	if got, want := result.Findings[0].Title, "Gateway process running"; got != want {
+	if got, want := result.Findings[0].Title, "网关进程正在运行"; got != want {
 		t.Fatalf("Findings[0].Title = %q, want %q", got, want)
 	}
 }
@@ -84,7 +84,7 @@ func TestScanConfigInvalidJSONCreatesWarningFinding(t *testing.T) {
 	if got, want := findings[0].Severity, Warning; got != want {
 		t.Fatalf("findings[0].Severity = %v, want %v", got, want)
 	}
-	if got, want := findings[0].Title, "Configuration file could not be parsed"; got != want {
+	if got, want := findings[0].Title, "配置文件解析失败"; got != want {
 		t.Fatalf("findings[0].Title = %q, want %q", got, want)
 	}
 }

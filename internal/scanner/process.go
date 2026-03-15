@@ -14,8 +14,8 @@ func ScanProcesses(plat platform.Platform) ([]Finding, error) {
 	for _, proc := range procs {
 		findings = append(findings, Finding{
 			Category:    CatProcess,
-			Title:       "OpenClaw process running",
-			Description: "An OpenClaw-related process is currently active.",
+			Title:       "OpenClaw 进程正在运行",
+			Description: "检测到 OpenClaw 相关进程正在活跃运行。",
 			Severity:    Warning,
 			Details: map[string]string{
 				"pid":     proc.PID,

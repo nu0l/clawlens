@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	gatewayPort    = 18789
-	dialTimeout    = 2 * time.Second
+	gatewayPort = 18789
+	dialTimeout = 2 * time.Second
 )
 
 // dialFunc abstracts net.DialTimeout for testing.
@@ -35,8 +35,8 @@ func scanGatewayPort(dial dialFunc) ([]Finding, error) {
 
 	findings = append(findings, Finding{
 		Category:    CatNetwork,
-		Title:       "Gateway port is open",
-		Description: fmt.Sprintf("OpenClaw gateway is listening on port %d. The gateway exposes an HTTP API that may allow remote control of the agent.", gatewayPort),
+		Title:       "网关端口已开放",
+		Description: fmt.Sprintf("OpenClaw 网关正在监听端口 %d，该端口暴露了 HTTP API，可能允许远程控制 Agent。", gatewayPort),
 		Severity:    Warning,
 		Details:     map[string]string{"port": fmt.Sprintf("%d", gatewayPort), "address": addr},
 	})
@@ -51,8 +51,8 @@ func scanGatewayPort(dial dialFunc) ([]Finding, error) {
 
 	findings = append(findings, Finding{
 		Category:    CatNetwork,
-		Title:       "Gateway exposed to network",
-		Description: fmt.Sprintf("OpenClaw gateway port %d is reachable on all interfaces (0.0.0.0). This exposes the agent to the entire network.", gatewayPort),
+		Title:       "网关暴露到外部网络",
+		Description: fmt.Sprintf("OpenClaw 网关端口 %d 在所有网络接口 (0.0.0.0) 上可达，已暴露到整个网络。", gatewayPort),
 		Severity:    Critical,
 		Details:     map[string]string{"port": fmt.Sprintf("%d", gatewayPort), "address": allAddr},
 	})

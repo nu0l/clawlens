@@ -43,7 +43,7 @@ func TestScanNetworkPortOpenLocalhost(t *testing.T) {
 	if findings[0].Severity != Warning {
 		t.Fatalf("expected Warning severity, got %v", findings[0].Severity)
 	}
-	if findings[0].Title != "Gateway port is open" {
+	if findings[0].Title != "网关端口已开放" {
 		t.Fatalf("unexpected title: %q", findings[0].Title)
 	}
 }
@@ -66,7 +66,7 @@ func TestScanNetworkPortOpenAllInterfaces(t *testing.T) {
 	if findings[1].Severity != Critical {
 		t.Fatalf("findings[1]: expected Critical, got %v", findings[1].Severity)
 	}
-	if findings[1].Title != "Gateway exposed to network" {
+	if findings[1].Title != "网关暴露到外部网络" {
 		t.Fatalf("unexpected title: %q", findings[1].Title)
 	}
 }

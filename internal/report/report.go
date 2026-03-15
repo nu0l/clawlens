@@ -21,7 +21,7 @@ func ParseFormat(value string) (Format, error) {
 	case FormatHTML, FormatJSON:
 		return format, nil
 	default:
-		return "", fmt.Errorf("unsupported format %q (expected html or json)", value)
+		return "", fmt.Errorf("不支持的格式 %q（可选 html 或 json）", value)
 	}
 }
 
@@ -65,7 +65,7 @@ func Write(w io.Writer, format Format, result *scanner.ScanResult, version strin
 	case FormatHTML:
 		return WriteHTML(w, result, version)
 	default:
-		return fmt.Errorf("unsupported format %q", format)
+		return fmt.Errorf("不支持的格式 %q", format)
 	}
 }
 
@@ -76,6 +76,7 @@ func groupFindings(findings []scanner.Finding) []FindingGroup {
 		scanner.CatService,
 		scanner.CatConfig,
 		scanner.CatCredentials,
+		scanner.CatNetwork,
 	}
 
 	grouped := make(map[scanner.Category][]scanner.Finding)

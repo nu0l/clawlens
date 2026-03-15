@@ -14,7 +14,7 @@ func TestParseOptionsRejectsInvalidFormat(t *testing.T) {
 	if err == nil {
 		t.Fatal("parseOptions should reject unsupported formats")
 	}
-	if !strings.Contains(err.Error(), "unsupported format") {
+	if !strings.Contains(err.Error(), "不支持的格式") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

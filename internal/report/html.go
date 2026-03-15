@@ -31,12 +31,12 @@ var funcMap = template.FuncMap{
 func WriteHTML(w io.Writer, result *scanner.ScanResult, version string) error {
 	tmplContent, err := templateFS.ReadFile("template/report.html")
 	if err != nil {
-		return fmt.Errorf("reading embedded template: %w", err)
+		return fmt.Errorf("读取内嵌模板失败: %w", err)
 	}
 
 	tmpl, err := template.New("report").Funcs(funcMap).Parse(string(tmplContent))
 	if err != nil {
-		return fmt.Errorf("parsing template: %w", err)
+		return fmt.Errorf("解析模板失败: %w", err)
 	}
 
 	data := NewTemplateData(result, version)

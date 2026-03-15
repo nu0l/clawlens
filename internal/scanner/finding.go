@@ -19,15 +19,15 @@ const (
 func (s Severity) String() string {
 	switch s {
 	case Clean:
-		return "CLEAN"
+		return "安全"
 	case Info:
-		return "INFO"
+		return "提示"
 	case Warning:
-		return "WARNING"
+		return "警告"
 	case Critical:
-		return "CRITICAL"
+		return "严重"
 	default:
-		return "UNKNOWN"
+		return "未知"
 	}
 }
 
@@ -46,17 +46,17 @@ const (
 func (c Category) Label() string {
 	switch c {
 	case CatInstallation:
-		return "Installation"
+		return "安装检测"
 	case CatProcess:
-		return "Processes"
+		return "进程检测"
 	case CatService:
-		return "Services"
+		return "服务检测"
 	case CatConfig:
-		return "Configuration"
+		return "配置检测"
 	case CatCredentials:
-		return "Credentials"
+		return "凭证检测"
 	case CatNetwork:
-		return "Network"
+		return "网络检测"
 	default:
 		return string(c)
 	}

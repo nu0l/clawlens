@@ -18,13 +18,13 @@ func TestWriteHTMLIncludesGroupedFindingsAndIssues(t *testing.T) {
 		Findings: []scanner.Finding{
 			{
 				Category:    scanner.CatConfig,
-				Title:       "Shell access enabled",
-				Description: "dangerous",
+				Title:       "Shell 访问已启用",
+				Description: "危险配置",
 				Severity:    scanner.Critical,
 			},
 		},
 		Issues: []scanner.ScanIssue{
-			{Check: "services", Error: "launchctl not available"},
+			{Check: "services", Error: "launchctl 不可用"},
 		},
 		MaxSeverity: scanner.Critical,
 	}
@@ -36,11 +36,11 @@ func TestWriteHTMLIncludesGroupedFindingsAndIssues(t *testing.T) {
 
 	rendered := output.String()
 	for _, needle := range []string{
-		"ClawLens Report",
-		"Scan Issues",
-		"launchctl not available",
-		"Configuration",
-		"Shell access enabled",
+		"ClawLens 安全报告",
+		"扫描异常",
+		"launchctl 不可用",
+		"配置检测",
+		"Shell 访问已启用",
 	} {
 		if !strings.Contains(rendered, needle) {
 			t.Fatalf("rendered HTML missing %q", needle)
