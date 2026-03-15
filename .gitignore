@@ -1,6 +1,6 @@
 # Binaries
-clawlens
-clawlens.exe
+/clawlens
+/clawlens.exe
 /dist/
 /build/
 tmp/
