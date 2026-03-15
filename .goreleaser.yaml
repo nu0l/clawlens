@@ -3,8 +3,10 @@ version: 2
 builds:
   - main: ./cmd/clawlens/
     binary: clawlens
+    env:
+      - CGO_ENABLED=0
     ldflags:
-      - -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
     goos:
       - linux
       - darwin

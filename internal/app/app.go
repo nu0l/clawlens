@@ -32,6 +32,8 @@ type options struct {
 }
 
 func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
+	initConsole()
+
 	opts, err := parseOptions(args, stderr)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -46,19 +48,22 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 		return 0
 	}
 
+	color := colorEnabled()
 	plat := platform.New()
 	scan := scanner.New(plat, opts.openclawHome)
 
 	if !opts.quiet {
-		fmt.Fprintf(stdout, "ClawLens %s -- OpenClaw 安全扫描器\n\n", cfg.Version)
-		fmt.Fprintln(stdout, "正在扫描...")
+		title := fmt.Sprintf("ClawLens %s", cfg.Version)
+		fmt.Fprintf(stdout, "%s -- OpenClaw 安全扫描器\n\n",
+			colorize(title, colorBoldCyan, color))
+		fmt.Fprintln(stdout, colorize("正在扫描...", colorGray, color))
 	}
 
 	result := scan.Run()
 
 	if !opts.quiet {
-		printFindings(stdout, result)
-		printIssues(stderr, result)
+		printFindings(stdout, result, color)
+		printIssues(stderr, result, color)
 	}
 
 	if !opts.shouldWriteReport() {
@@ -76,14 +81,17 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 	}
 
 	if !opts.quiet {
-		fmt.Fprintf(stdout, "报告已保存至 %s\n", outputPath)
+		fmt.Fprintf(stdout, "\n%s %s\n",
+			colorize("报告已保存至", colorGray, color),
+			colorize(outputPath, colorBoldWhite, color))
 	}
 
 	if opts.shouldOpenBrowser() {
 		if !hasDesktopEnvironment() {
 			if !opts.quiet {
-				fmt.Fprintf(stderr, "提示: 未检测到桌面环境，跳过浏览器打开。\n")
-				fmt.Fprintf(stderr, "     请将报告文件 %s 复制到有浏览器的机器上查看。\n", outputPath)
+				fmt.Fprintf(stderr, "%s 未检测到桌面环境，跳过浏览器打开。\n",
+					colorize("提示:", colorCyan, color))
+				fmt.Fprintf(stderr, "      请将报告文件复制到有浏览器的机器上查看。\n")
 			}
 		} else if err := openReportInBrowser(plat, outputPath); err != nil && !opts.quiet {
 			fmt.Fprintf(stderr, "警告: 无法打开浏览器: %v\n", err)
@@ -170,39 +178,52 @@ func openReportInBrowser(plat platform.Platform, path string) error {
 	return browser.Open(plat, reportURL.String())
 }
 
-func printFindings(w io.Writer, result *scanner.ScanResult) {
+const separator = "────────────────────────────────────────"
+
+func printFindings(w io.Writer, result *scanner.ScanResult, color bool) {
 	if len(result.Findings) == 0 {
-		fmt.Fprintln(w, "  [安全] 未检测到 OpenClaw 安装。")
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, colorize("  [安全] 未检测到 OpenClaw 安装。", colorBoldGreen, color))
 		fmt.Fprintln(w)
 		return
 	}
 
+	fmt.Fprintln(w)
 	for _, finding := range result.Findings {
-		fmt.Fprintf(w, "%s %s\n", severityPrefix(finding.Severity), finding.Title)
+		icon, tagColor := severityStyle(finding.Severity)
+		tag := colorize(fmt.Sprintf(" %s ", finding.Severity), tagColor, color)
+		fmt.Fprintf(w, "  %s %s  %s\n", icon, tag, finding.Title)
 	}
 
 	counts := result.CountBySeverity()
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "扫描结果: %d 严重, %d 警告, %d 提示\n",
-		counts[scanner.Critical], counts[scanner.Warning], counts[scanner.Info])
+	fmt.Fprintln(w, colorize(separator, colorGray, color))
+
+	critical := colorize(fmt.Sprintf("%d 严重", counts[scanner.Critical]), colorBoldRed, color)
+	warning := colorize(fmt.Sprintf("%d 警告", counts[scanner.Warning]), colorBoldYellow, color)
+	info := colorize(fmt.Sprintf("%d 提示", counts[scanner.Info]), colorBoldBlue, color)
+	fmt.Fprintf(w, "  扫描结果:  %s  %s  %s\n", critical, warning, info)
+
+	fmt.Fprintln(w, colorize(separator, colorGray, color))
 }
 
-func printIssues(w io.Writer, result *scanner.ScanResult) {
+func printIssues(w io.Writer, result *scanner.ScanResult, color bool) {
 	if len(result.Issues) == 0 {
 		return
 	}
 
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "扫描异常:")
+	fmt.Fprintln(w, colorize("扫描异常:", colorYellow, color))
 	for _, issue := range result.Issues {
-		fmt.Fprintf(w, "  - %s: %s\n", issue.Check, issue.Error)
+		fmt.Fprintf(w, "  %s %s: %s\n",
+			colorize("-", colorYellow, color),
+			colorize(issue.Check, colorBoldYellow, color),
+			issue.Error)
 	}
 	fmt.Fprintln(w)
 }
 
 // hasDesktopEnvironment checks whether a graphical desktop is available.
-// On Linux/macOS it looks for DISPLAY or WAYLAND_DISPLAY; on Windows a
-// desktop is assumed to always exist.
 func hasDesktopEnvironment() bool {
 	if os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "" {
 		return true
@@ -212,15 +233,15 @@ func hasDesktopEnvironment() bool {
 		os.Getenv("TERM_PROGRAM") != ""
 }
 
-func severityPrefix(severity scanner.Severity) string {
+func severityStyle(severity scanner.Severity) (icon string, tagColor string) {
 	switch severity {
 	case scanner.Critical:
-		return "  [严重]"
+		return "\033[31m●\033[0m", colorBoldRed
 	case scanner.Warning:
-		return "  [警告]"
+		return "\033[33m▲\033[0m", colorBoldYellow
 	case scanner.Info:
-		return "  [提示]"
+		return "\033[34m■\033[0m", colorBoldBlue
 	default:
-		return "  [安全]"
+		return "\033[32m✔\033[0m", colorBoldGreen
 	}
 }
