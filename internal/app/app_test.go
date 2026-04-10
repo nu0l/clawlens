@@ -38,3 +38,13 @@ func TestDefaultOutputPathUsesFormatExtension(t *testing.T) {
 		t.Fatalf("unexpected output path: %s", path)
 	}
 }
+
+func TestParseOptionsParsesTargets(t *testing.T) {
+	opts, err := parseOptions([]string{"--targets", "192.168.1.10,192.168.1.0/30"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parseOptions returned error: %v", err)
+	}
+	if len(opts.targets) != 5 {
+		t.Fatalf("expected 5 targets, got %d", len(opts.targets))
+	}
+}

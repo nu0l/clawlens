@@ -9,8 +9,9 @@ import (
 )
 
 type scanContext struct {
-	Platform platform.Platform
-	HomeDir  string
+	Platform      platform.Platform
+	HomeDir       string
+	RemoteTargets []string
 }
 
 type scanCheck struct {
@@ -28,8 +29,10 @@ type Scanner struct {
 
 // New creates a scanner. If homeDir is empty, it uses the platform default
 // or the OPENCLAW_HOME environment variable.
-func New(plat platform.Platform, homeDir string) *Scanner {
-	return newWithChecks(plat, homeDir, defaultChecks()...)
+func New(plat platform.Platform, homeDir string, remoteTargets []string) *Scanner {
+	s := newWithChecks(plat, homeDir, defaultChecks()...)
+	s.context.RemoteTargets = remoteTargets
+	return s
 }
 
 func newWithChecks(plat platform.Platform, homeDir string, checks ...scanCheck) *Scanner {
@@ -113,7 +116,15 @@ func defaultChecks() []scanCheck {
 		{
 			name: "network",
 			run: func(ctx scanContext) ([]Finding, error) {
-				return ScanNetwork(nil)
+				findings, err := ScanNetwork(nil)
+				if err != nil {
+					return nil, err
+				}
+				remoteFindings, err := ScanTargetNetwork(ctx.RemoteTargets, nil, nil)
+				if err != nil {
+					return nil, err
+				}
+				return append(findings, remoteFindings...), nil
 			},
 		},
 	}
