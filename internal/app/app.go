@@ -27,6 +27,7 @@ type options struct {
 	format       report.Format
 	noOpen       bool
 	openclawHome string
+	targets      []string
 	quiet        bool
 	showVersion  bool
 }
@@ -50,16 +51,25 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 
 	color := colorEnabled()
 	plat := platform.New()
-	scan := scanner.New(plat, opts.openclawHome)
+	scan := scanner.New(plat, opts.openclawHome, opts.targets)
 
 	if !opts.quiet {
 		title := fmt.Sprintf("ClawLens %s", cfg.Version)
 		fmt.Fprintf(stdout, "%s -- OpenClaw 安全扫描器\n\n",
 			colorize(title, colorBoldCyan, color))
 		fmt.Fprintln(stdout, colorize("正在扫描...", colorGray, color))
+		if len(opts.targets) > 0 {
+			fmt.Fprintf(stdout, "%s 内网目标扫描已启用：%d 个目标（并发探测）\n",
+				colorize("提示:", colorCyan, color), len(opts.targets))
+		}
 	}
-
+	scanStart := time.Now()
 	result := scan.Run()
+
+	if !opts.quiet && len(opts.targets) > 0 {
+		fmt.Fprintf(stdout, "%s 内网目标扫描完成，耗时 %s\n",
+			colorize("提示:", colorCyan, color), time.Since(scanStart).Round(time.Millisecond))
+	}
 
 	if !opts.quiet {
 		printFindings(stdout, result, color)
@@ -115,6 +125,8 @@ func parseOptions(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&formatRaw, "format", string(report.FormatHTML), "输出格式: html, json")
 	fs.BoolVar(&opts.noOpen, "no-open", false, "不自动打开浏览器")
 	fs.StringVar(&opts.openclawHome, "openclaw-home", "", "指定 OpenClaw 目录")
+	var targetSpec string
+	fs.StringVar(&targetSpec, "targets", "", "指定扫描目标 IP/网段，支持逗号分隔（如 192.168.1.10,192.168.1.0/24）")
 	fs.BoolVar(&opts.quiet, "q", false, "静默模式，仅返回退出码")
 	fs.BoolVar(&opts.quiet, "quiet", false, "静默模式，仅返回退出码")
 	fs.BoolVar(&opts.showVersion, "v", false, "显示版本号")
@@ -132,6 +144,12 @@ func parseOptions(args []string, stderr io.Writer) (options, error) {
 		return opts, err
 	}
 	opts.format = format
+
+	targets, err := scanner.ParseTargets(targetSpec)
+	if err != nil {
+		return opts, err
+	}
+	opts.targets = targets
 
 	return opts, nil
 }
