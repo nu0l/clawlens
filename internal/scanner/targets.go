@@ -51,10 +51,18 @@ func ParseTargets(spec string) ([]string, error) {
 			return nil, fmt.Errorf("网段 %q 主机数过大（%d），请拆分后重试", item, hostCount)
 		}
 
-		start := binary.BigEndian.Uint32(base)
-		for i := 0; i < hostCount; i++ {
+		networkBase := binary.BigEndian.Uint32(base) & binary.BigEndian.Uint32(ipNet.Mask)
+		firstHost := 0
+		lastHost := hostCount - 1
+		if hostCount > 2 {
+			// 对常见 IPv4 子网，跳过网络地址与广播地址。
+			firstHost = 1
+			lastHost = hostCount - 2
+		}
+
+		for i := firstHost; i <= lastHost; i++ {
 			addr := make(net.IP, net.IPv4len)
-			binary.BigEndian.PutUint32(addr, start+uint32(i))
+			binary.BigEndian.PutUint32(addr, networkBase+uint32(i))
 			normalized := addr.String()
 			if _, ok := seen[normalized]; !ok {
 				targets = append(targets, normalized)

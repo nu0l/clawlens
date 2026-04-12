@@ -11,10 +11,13 @@ func TestParseTargetsIPAndCIDR(t *testing.T) {
 		t.Fatalf("ParseTargets returned error: %v", err)
 	}
 
-	for _, want := range []string{"192.168.1.10", "192.168.1.0", "192.168.1.1", "192.168.1.2", "192.168.1.3"} {
+	for _, want := range []string{"192.168.1.10", "192.168.1.1", "192.168.1.2"} {
 		if !slices.Contains(targets, want) {
 			t.Fatalf("targets missing %s: %v", want, targets)
 		}
+	}
+	if slices.Contains(targets, "192.168.1.0") || slices.Contains(targets, "192.168.1.3") {
+		t.Fatalf("network/broadcast addresses should be excluded: %v", targets)
 	}
 }
 

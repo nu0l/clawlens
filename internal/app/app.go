@@ -58,9 +58,18 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 		fmt.Fprintf(stdout, "%s -- OpenClaw 安全扫描器\n\n",
 			colorize(title, colorBoldCyan, color))
 		fmt.Fprintln(stdout, colorize("正在扫描...", colorGray, color))
+		if len(opts.targets) > 0 {
+			fmt.Fprintf(stdout, "%s 内网目标扫描已启用：%d 个目标（并发探测）\n",
+				colorize("提示:", colorCyan, color), len(opts.targets))
+		}
 	}
-
+	scanStart := time.Now()
 	result := scan.Run()
+
+	if !opts.quiet && len(opts.targets) > 0 {
+		fmt.Fprintf(stdout, "%s 内网目标扫描完成，耗时 %s\n",
+			colorize("提示:", colorCyan, color), time.Since(scanStart).Round(time.Millisecond))
+	}
 
 	if !opts.quiet {
 		printFindings(stdout, result, color)

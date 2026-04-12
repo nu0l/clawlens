@@ -48,7 +48,7 @@ func TestScanTargetNetworkDetectsAuthRisk(t *testing.T) {
 	client := srv.Client()
 	client.Timeout = 2 * time.Second
 
-	findings, err := scanTargetNetwork([]string{host}, port, net.DialTimeout, client)
+	findings, err := scanTargetNetwork([]string{host}, port, net.DialTimeout, client, nil)
 	if err != nil {
 		t.Fatalf("scanTargetNetwork error: %v", err)
 	}

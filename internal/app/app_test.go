@@ -44,7 +44,7 @@ func TestParseOptionsParsesTargets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseOptions returned error: %v", err)
 	}
-	if len(opts.targets) != 5 {
-		t.Fatalf("expected 5 targets, got %d", len(opts.targets))
+	if len(opts.targets) != 3 {
+		t.Fatalf("expected 3 targets, got %d", len(opts.targets))
 	}
 }
