@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const maxCIDRHosts = 4096
+const maxCIDRHosts = 65536
 
 // ParseTargets parses a target list from CLI input and expands IPv4 CIDR ranges.
 func ParseTargets(spec string) ([]string, error) {

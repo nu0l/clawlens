@@ -27,3 +27,13 @@ func TestParseTargetsRejectsInvalid(t *testing.T) {
 		t.Fatal("ParseTargets should reject invalid target")
 	}
 }
+
+func TestParseTargetsAllowsSlash16(t *testing.T) {
+	targets, err := ParseTargets("192.168.116.79/16")
+	if err != nil {
+		t.Fatalf("ParseTargets returned error: %v", err)
+	}
+	if len(targets) != 65534 {
+		t.Fatalf("expected 65534 hosts for /16, got %d", len(targets))
+	}
+}
