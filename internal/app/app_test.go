@@ -52,6 +52,7 @@ func TestParseOptionsParsesTargets(t *testing.T) {
 
 func TestSummarizeTargetScan(t *testing.T) {
 	result := &scanner.ScanResult{Findings: []scanner.Finding{
+		{Category: scanner.CatNetwork, Title: "网关端口仅在本地开放", Details: map[string]string{"addresses": "[127.0.0.1 ::1]"}},
 		{Severity: scanner.Warning, Details: map[string]string{"target": "172.31.0.10"}},
 		{Severity: scanner.Critical, Details: map[string]string{"target": "172.31.0.20"}},
 		{Severity: scanner.Critical, Details: map[string]string{"target": "172.31.0.20"}},
@@ -67,6 +68,9 @@ func TestSummarizeTargetScan(t *testing.T) {
 	}
 	if len(summary.CriticalHosts) != 1 || summary.CriticalHosts[0] != "172.31.0.20" {
 		t.Fatalf("unexpected critical hosts: %v", summary.CriticalHosts)
+	}
+	if !summary.LocalLoopbackOnly {
+		t.Fatal("expected LocalLoopbackOnly to be true")
 	}
 }
 

@@ -174,9 +174,10 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 }
 
 type targetScanSummary struct {
-	TotalTargets    int
-	DiscoveredHosts []string
-	CriticalHosts   []string
+	TotalTargets      int
+	DiscoveredHosts   []string
+	CriticalHosts     []string
+	LocalLoopbackOnly bool
 }
 
 func summarizeTargetScan(result *scanner.ScanResult, totalTargets int) targetScanSummary {
@@ -185,6 +186,9 @@ func summarizeTargetScan(result *scanner.ScanResult, totalTargets int) targetSca
 	critical := make(map[string]struct{})
 
 	for _, finding := range result.Findings {
+		if finding.Category == scanner.CatNetwork && finding.Title == "网关端口仅在本地开放" {
+			summary.LocalLoopbackOnly = true
+		}
 		target, ok := finding.Details["target"]
 		if !ok || strings.TrimSpace(target) == "" {
 			continue
@@ -209,12 +213,15 @@ func summarizeTargetScan(result *scanner.ScanResult, totalTargets int) targetSca
 
 func printTargetScanSummary(w io.Writer, result *scanner.ScanResult, totalTargets int, color bool) {
 	summary := summarizeTargetScan(result, totalTargets)
-	fmt.Fprintf(w, "%s 扫描目标总数: %d，发现主机: %d，高危主机: %d\n",
+	fmt.Fprintf(w, "%s 扫描目标总数: %d，远程可达主机: %d，高危主机: %d\n",
 		colorize("统计:", colorCyan, color),
 		summary.TotalTargets,
 		len(summary.DiscoveredHosts),
 		len(summary.CriticalHosts),
 	)
+	if summary.LocalLoopbackOnly {
+		fmt.Fprintf(w, "%s 检测到本机网关仅监听回环地址（127.0.0.1/::1），不会计入远程可达主机。\n", colorize("统计:", colorCyan, color))
+	}
 
 	if len(summary.DiscoveredHosts) == 0 {
 		fmt.Fprintf(w, "%s 本次未发现内网 OpenClaw 网关暴露主机。\n", colorize("统计:", colorCyan, color))
