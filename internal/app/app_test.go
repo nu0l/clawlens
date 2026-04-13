@@ -76,3 +76,17 @@ func TestParseOptionsRejectsInvalidWorkers(t *testing.T) {
 		t.Fatalf("expected workers validation error, got %v", err)
 	}
 }
+
+func TestParseOptionsRejectsBothLocalAndRemoteOnly(t *testing.T) {
+	_, err := parseOptions([]string{"--local-only", "--remote-only", "--targets", "192.168.1.0/30"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "不能同时使用") {
+		t.Fatalf("expected conflict error, got %v", err)
+	}
+}
+
+func TestParseOptionsRemoteOnlyRequiresTargets(t *testing.T) {
+	_, err := parseOptions([]string{"--remote-only"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "必须配合 --targets") {
+		t.Fatalf("expected remote-only target requirement error, got %v", err)
+	}
+}

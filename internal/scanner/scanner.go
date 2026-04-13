@@ -41,9 +41,11 @@ func New(
 	remoteWorkers int,
 	remoteDialTimeout time.Duration,
 	remoteProgressStep int,
+	runLocal bool,
+	runRemote bool,
 	remoteProgress func(done, total int),
 ) *Scanner {
-	s := newWithChecks(plat, homeDir, defaultChecks()...)
+	s := newWithChecks(plat, homeDir, defaultChecks(runLocal, runRemote)...)
 	s.context.RemoteTargets = remoteTargets
 	s.context.RemoteWorkers = remoteWorkers
 	s.context.RemoteDialTimeout = remoteDialTimeout
@@ -98,62 +100,89 @@ func (s *Scanner) Run() *ScanResult {
 	return result
 }
 
-func defaultChecks() []scanCheck {
-	return []scanCheck{
-		{
-			name: "filesystem",
-			run: func(ctx scanContext) ([]Finding, error) {
-				return ScanFilesystem(ctx.HomeDir)
+func defaultChecks(runLocal bool, runRemote bool) []scanCheck {
+	checks := make([]scanCheck, 0, 6)
+	if runLocal {
+		checks = append(checks,
+			scanCheck{
+				name: "filesystem",
+				run: func(ctx scanContext) ([]Finding, error) {
+					return ScanFilesystem(ctx.HomeDir)
+				},
 			},
-		},
-		{
-			name: "processes",
-			run: func(ctx scanContext) ([]Finding, error) {
-				return ScanProcesses(ctx.Platform)
+			scanCheck{
+				name: "processes",
+				run: func(ctx scanContext) ([]Finding, error) {
+					return ScanProcesses(ctx.Platform)
+				},
 			},
-		},
-		{
-			name: "services",
-			run: func(ctx scanContext) ([]Finding, error) {
-				return ScanServices(ctx.Platform)
+			scanCheck{
+				name: "services",
+				run: func(ctx scanContext) ([]Finding, error) {
+					return ScanServices(ctx.Platform)
+				},
 			},
-		},
-		{
-			name: "config",
-			run: func(ctx scanContext) ([]Finding, error) {
-				return ScanConfig(ctx.HomeDir)
+			scanCheck{
+				name: "config",
+				run: func(ctx scanContext) ([]Finding, error) {
+					return ScanConfig(ctx.HomeDir)
+				},
 			},
-		},
-		{
-			name: "credentials",
-			run: func(ctx scanContext) ([]Finding, error) {
-				return ScanCredentials(ctx.HomeDir)
+			scanCheck{
+				name: "credentials",
+				run: func(ctx scanContext) ([]Finding, error) {
+					return ScanCredentials(ctx.HomeDir)
+				},
 			},
-		},
-		{
+		)
+	}
+
+	if runLocal || runRemote {
+		checks = append(checks, scanCheck{
 			name: "network",
 			run: func(ctx scanContext) ([]Finding, error) {
-				localFindings, localErr := ScanNetwork(nil)
-				remoteFindings, err := ScanTargetNetwork(ctx.RemoteTargets, nil, nil, &TargetScanOptions{
-					Workers:       ctx.RemoteWorkers,
-					DialTimeout:   ctx.RemoteDialTimeout,
-					HTTPTimeout:   maxDuration(1200*time.Millisecond, ctx.RemoteDialTimeout*2),
-					ProgressEvery: ctx.RemoteProgressStep,
-					Progress:      ctx.RemoteProgress,
-				})
-				if err != nil {
+				var localFindings []Finding
+				var localErr error
+				if runLocal {
+					localFindings, localErr = ScanNetwork(nil)
+				}
+
+				var remoteFindings []Finding
+				var remoteErr error
+				if runRemote {
+					remoteFindings, remoteErr = ScanTargetNetwork(ctx.RemoteTargets, nil, nil, &TargetScanOptions{
+						Workers:       ctx.RemoteWorkers,
+						DialTimeout:   ctx.RemoteDialTimeout,
+						HTTPTimeout:   maxDuration(1200*time.Millisecond, ctx.RemoteDialTimeout*2),
+						ProgressEvery: ctx.RemoteProgressStep,
+						Progress:      ctx.RemoteProgress,
+					})
+				}
+
+				findings := append(localFindings, remoteFindings...)
+				if remoteErr != nil {
 					if localErr != nil {
-						return append(localFindings, remoteFindings...), fmt.Errorf("本地网络检测失败: %v；目标网络检测失败: %w", localErr, err)
+						return findings, fmt.Errorf("本地网络检测失败: %v；目标网络检测失败: %w", localErr, remoteErr)
 					}
-					return append(localFindings, remoteFindings...), fmt.Errorf("目标网络检测失败: %w", err)
+					return findings, fmt.Errorf("目标网络检测失败: %w", remoteErr)
 				}
 				if localErr != nil {
-					return append(localFindings, remoteFindings...), fmt.Errorf("本地网络检测失败: %w", localErr)
+					return findings, fmt.Errorf("本地网络检测失败: %w", localErr)
 				}
-				return append(localFindings, remoteFindings...), nil
+
+				return findings, nil
 			},
-		},
+		})
 	}
+
+	return checks
+}
+
+func maxDuration(a, b time.Duration) time.Duration {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func maxDuration(a, b time.Duration) time.Duration {

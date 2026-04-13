@@ -33,6 +33,8 @@ type options struct {
 	workers       int
 	targetTimeout time.Duration
 	progressEvery int
+	localOnly     bool
+	remoteOnly    bool
 	quiet         bool
 	showVersion   bool
 }
@@ -56,6 +58,10 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 
 	color := colorEnabled()
 	plat := platform.New()
+	remoteEnabled := len(opts.targets) > 0 && !opts.localOnly
+	if opts.remoteOnly {
+		remoteEnabled = true
+	}
 	var progressMu sync.Mutex
 	lastProgressWidth := 0
 	interactiveProgress := false
@@ -89,6 +95,8 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 		opts.workers,
 		opts.targetTimeout,
 		opts.progressEvery,
+		!opts.remoteOnly,
+		remoteEnabled,
 		progress,
 	)
 
@@ -97,15 +105,22 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 		fmt.Fprintf(stdout, "%s -- OpenClaw 安全扫描器\n\n",
 			colorize(title, colorBoldCyan, color))
 		fmt.Fprintln(stdout, colorize("正在扫描...", colorGray, color))
-		if len(opts.targets) > 0 {
+		if opts.remoteOnly {
+			fmt.Fprintf(stdout, "%s 当前模式：仅扫描 targets（跳过本机检查）\n", colorize("提示:", colorCyan, color))
+		} else if opts.localOnly {
+			fmt.Fprintf(stdout, "%s 当前模式：仅扫描本机\n", colorize("提示:", colorCyan, color))
+		}
+		if remoteEnabled {
 			fmt.Fprintf(stdout, "%s 内网目标扫描已启用：%d 个目标（并发探测）\n",
 				colorize("提示:", colorCyan, color), len(opts.targets))
+		} else if len(opts.targets) > 0 && opts.localOnly {
+			fmt.Fprintf(stdout, "%s 已指定 targets，但 local-only 模式下将跳过远程扫描\n", colorize("提示:", colorCyan, color))
 		}
 	}
 	scanStart := time.Now()
 	result := scan.Run()
 
-	if !opts.quiet && len(opts.targets) > 0 {
+	if !opts.quiet && remoteEnabled {
 		progressMu.Lock()
 		if interactiveProgress && lastProgressWidth > 0 {
 			fmt.Fprintln(stdout)
@@ -231,6 +246,8 @@ func parseOptions(args []string, stderr io.Writer) (options, error) {
 	fs.IntVar(&opts.workers, "workers", 64, "内网目标扫描并发数")
 	fs.DurationVar(&opts.targetTimeout, "target-timeout", 800*time.Millisecond, "内网目标连接超时时间（如 800ms, 2s）")
 	fs.IntVar(&opts.progressEvery, "progress-every", 10, "每处理 N 个目标输出一次实时进度")
+	fs.BoolVar(&opts.localOnly, "local-only", false, "仅执行本机扫描，跳过 targets 远程探测")
+	fs.BoolVar(&opts.remoteOnly, "remote-only", false, "仅执行 targets 远程探测，跳过本机扫描")
 	fs.BoolVar(&opts.quiet, "q", false, "静默模式，仅返回退出码")
 	fs.BoolVar(&opts.quiet, "quiet", false, "静默模式，仅返回退出码")
 	fs.BoolVar(&opts.showVersion, "v", false, "显示版本号")
@@ -262,6 +279,12 @@ func parseOptions(args []string, stderr io.Writer) (options, error) {
 	}
 	if opts.progressEvery <= 0 {
 		return opts, fmt.Errorf("progress-every 必须大于 0")
+	}
+	if opts.localOnly && opts.remoteOnly {
+		return opts, fmt.Errorf("local-only 与 remote-only 不能同时使用")
+	}
+	if opts.remoteOnly && len(opts.targets) == 0 {
+		return opts, fmt.Errorf("remote-only 模式必须配合 --targets 使用")
 	}
 
 	return opts, nil
