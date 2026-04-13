@@ -139,7 +139,7 @@ func defaultChecks() []scanCheck {
 				remoteFindings, err := ScanTargetNetwork(ctx.RemoteTargets, nil, nil, &TargetScanOptions{
 					Workers:       ctx.RemoteWorkers,
 					DialTimeout:   ctx.RemoteDialTimeout,
-					HTTPTimeout:   ctx.RemoteDialTimeout,
+					HTTPTimeout:   maxDuration(1200*time.Millisecond, ctx.RemoteDialTimeout*2),
 					ProgressEvery: ctx.RemoteProgressStep,
 					Progress:      ctx.RemoteProgress,
 				})
@@ -150,4 +150,11 @@ func defaultChecks() []scanCheck {
 			},
 		},
 	}
+}
+
+func maxDuration(a, b time.Duration) time.Duration {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -57,6 +57,11 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 	color := colorEnabled()
 	plat := platform.New()
 	var progressMu sync.Mutex
+	lastProgressWidth := 0
+	interactiveProgress := false
+	if file, ok := stdout.(*os.File); ok {
+		interactiveProgress = isTerminal(file)
+	}
 	progress := func(done, total int) {
 		if opts.quiet {
 			return
@@ -64,8 +69,18 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 		progressMu.Lock()
 		defer progressMu.Unlock()
 		percent := float64(done) / float64(total) * 100
-		fmt.Fprintf(stdout, "%s 内网扫描进度: %d/%d (%.0f%%)\n",
+		line := fmt.Sprintf("%s 内网扫描进度: %d/%d (%.0f%%)",
 			colorize("提示:", colorCyan, color), done, total, percent)
+		if interactiveProgress {
+			padding := ""
+			if lastProgressWidth > len(line) {
+				padding = strings.Repeat(" ", lastProgressWidth-len(line))
+			}
+			fmt.Fprintf(stdout, "\r%s%s", line, padding)
+			lastProgressWidth = len(line)
+			return
+		}
+		fmt.Fprintln(stdout, line)
 	}
 	scan := scanner.New(
 		plat,
@@ -91,6 +106,11 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 	result := scan.Run()
 
 	if !opts.quiet && len(opts.targets) > 0 {
+		progressMu.Lock()
+		if interactiveProgress && lastProgressWidth > 0 {
+			fmt.Fprintln(stdout)
+		}
+		progressMu.Unlock()
 		fmt.Fprintf(stdout, "%s 内网目标扫描完成，耗时 %s\n",
 			colorize("提示:", colorCyan, color), time.Since(scanStart).Round(time.Millisecond))
 		printTargetScanSummary(stdout, result, len(opts.targets), color)
