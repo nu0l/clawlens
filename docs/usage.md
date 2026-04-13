@@ -17,11 +17,19 @@ clawlens -f json                  # 输出 JSON 报告
 clawlens -o report.html           # 指定输出路径
 clawlens --no-open                # 不自动打开浏览器
 clawlens --openclaw-home /path    # 指定 OpenClaw 主目录
+clawlens --targets 192.168.1.0/24 # 扫描指定 IP/网段中的 OpenClaw 网关与风险
+clawlens --workers 128            # 调整目标扫描并发数
+clawlens --target-timeout 1s      # 调整目标连接超时
+clawlens --progress-every 10      # 每处理 10 个目标输出一次进度
+clawlens --local-only             # 仅执行本机扫描
+clawlens --remote-only --targets 192.168.1.0/24 # 仅执行目标远程扫描
 clawlens -q                       # 静默模式，仅返回退出码
 clawlens -v                       # 打印版本号
 ```
 
 终端输出默认带彩色高亮，设置环境变量 `NO_COLOR=1` 可关闭。
+
+> 未指定 `--targets` 时，ClawLens 默认仅执行本机扫描。
 
 ## 退出码
 
