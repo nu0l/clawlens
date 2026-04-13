@@ -107,6 +107,8 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 		fmt.Fprintln(stdout, colorize("正在扫描...", colorGray, color))
 		if opts.remoteOnly {
 			fmt.Fprintf(stdout, "%s 当前模式：仅扫描 targets（跳过本机检查）\n", colorize("提示:", colorCyan, color))
+		} else if len(opts.targets) == 0 {
+			fmt.Fprintf(stdout, "%s 未指定 targets，默认仅执行本机扫描\n", colorize("提示:", colorCyan, color))
 		} else if opts.localOnly {
 			fmt.Fprintf(stdout, "%s 当前模式：仅扫描本机\n", colorize("提示:", colorCyan, color))
 		}
