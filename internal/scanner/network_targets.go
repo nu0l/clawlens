@@ -151,11 +151,14 @@ func probeAuthRisk(client *http.Client, target string, port int) map[string]stri
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 	content := strings.ToLower(string(body))
 	server := strings.ToLower(resp.Header.Get("Server"))
+	poweredBy := strings.ToLower(resp.Header.Get("X-Powered-By"))
+	identifiedOpenClaw := strings.Contains(content, "openclaw") || strings.Contains(server, "openclaw") || strings.Contains(poweredBy, "openclaw")
 
-	if resp.StatusCode < 400 || strings.Contains(content, "openclaw") || strings.Contains(server, "openclaw") {
+	if identifiedOpenClaw && resp.StatusCode < 400 {
 		return map[string]string{
 			"http_status": resp.Status,
 			"probe":       "GET /",
+			"fingerprint": "openclaw",
 		}
 	}
 

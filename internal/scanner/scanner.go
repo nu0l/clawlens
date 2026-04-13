@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"time"
@@ -132,10 +133,7 @@ func defaultChecks() []scanCheck {
 		{
 			name: "network",
 			run: func(ctx scanContext) ([]Finding, error) {
-				findings, err := ScanNetwork(nil)
-				if err != nil {
-					return nil, err
-				}
+				localFindings, localErr := ScanNetwork(nil)
 				remoteFindings, err := ScanTargetNetwork(ctx.RemoteTargets, nil, nil, &TargetScanOptions{
 					Workers:       ctx.RemoteWorkers,
 					DialTimeout:   ctx.RemoteDialTimeout,
@@ -144,9 +142,15 @@ func defaultChecks() []scanCheck {
 					Progress:      ctx.RemoteProgress,
 				})
 				if err != nil {
-					return nil, err
+					if localErr != nil {
+						return append(localFindings, remoteFindings...), fmt.Errorf("本地网络检测失败: %v；目标网络检测失败: %w", localErr, err)
+					}
+					return append(localFindings, remoteFindings...), fmt.Errorf("目标网络检测失败: %w", err)
 				}
-				return append(findings, remoteFindings...), nil
+				if localErr != nil {
+					return append(localFindings, remoteFindings...), fmt.Errorf("本地网络检测失败: %w", localErr)
+				}
+				return append(localFindings, remoteFindings...), nil
 			},
 		},
 	}
