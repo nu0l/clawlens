@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/clawlens/clawlens/internal/browser"
@@ -23,12 +25,18 @@ type Config struct {
 }
 
 type options struct {
-	output       string
-	format       report.Format
-	noOpen       bool
-	openclawHome string
-	quiet        bool
-	showVersion  bool
+	output        string
+	format        report.Format
+	noOpen        bool
+	openclawHome  string
+	targets       []string
+	workers       int
+	targetTimeout time.Duration
+	progressEvery int
+	localOnly     bool
+	remoteOnly    bool
+	quiet         bool
+	showVersion   bool
 }
 
 func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
@@ -50,16 +58,78 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 
 	color := colorEnabled()
 	plat := platform.New()
-	scan := scanner.New(plat, opts.openclawHome)
+	remoteEnabled := len(opts.targets) > 0 && !opts.localOnly
+	if opts.remoteOnly {
+		remoteEnabled = true
+	}
+	var progressMu sync.Mutex
+	lastProgressWidth := 0
+	interactiveProgress := false
+	if file, ok := stdout.(*os.File); ok {
+		interactiveProgress = isTerminal(file)
+	}
+	progress := func(done, total int) {
+		if opts.quiet {
+			return
+		}
+		progressMu.Lock()
+		defer progressMu.Unlock()
+		percent := float64(done) / float64(total) * 100
+		line := fmt.Sprintf("%s 内网扫描进度: %d/%d (%.0f%%)",
+			colorize("提示:", colorCyan, color), done, total, percent)
+		if interactiveProgress {
+			padding := ""
+			if lastProgressWidth > len(line) {
+				padding = strings.Repeat(" ", lastProgressWidth-len(line))
+			}
+			fmt.Fprintf(stdout, "\r%s%s", line, padding)
+			lastProgressWidth = len(line)
+			return
+		}
+		fmt.Fprintln(stdout, line)
+	}
+	scan := scanner.New(
+		plat,
+		opts.openclawHome,
+		opts.targets,
+		opts.workers,
+		opts.targetTimeout,
+		opts.progressEvery,
+		!opts.remoteOnly,
+		remoteEnabled,
+		progress,
+	)
 
 	if !opts.quiet {
 		title := fmt.Sprintf("ClawLens %s", cfg.Version)
 		fmt.Fprintf(stdout, "%s -- OpenClaw 安全扫描器\n\n",
 			colorize(title, colorBoldCyan, color))
 		fmt.Fprintln(stdout, colorize("正在扫描...", colorGray, color))
+		if opts.remoteOnly {
+			fmt.Fprintf(stdout, "%s 当前模式：仅扫描 targets（跳过本机检查）\n", colorize("提示:", colorCyan, color))
+		} else if opts.localOnly {
+			fmt.Fprintf(stdout, "%s 当前模式：仅扫描本机\n", colorize("提示:", colorCyan, color))
+		}
+		if remoteEnabled {
+			fmt.Fprintf(stdout, "%s 内网目标扫描已启用：%d 个目标（并发探测）\n",
+				colorize("提示:", colorCyan, color), len(opts.targets))
+		} else if len(opts.targets) > 0 && opts.localOnly {
+			fmt.Fprintf(stdout, "%s 已指定 targets，但 local-only 模式下将跳过远程扫描\n", colorize("提示:", colorCyan, color))
+		}
 	}
-
+	scanStart := time.Now()
 	result := scan.Run()
+
+	if !opts.quiet && remoteEnabled {
+		progressMu.Lock()
+		if interactiveProgress && lastProgressWidth > 0 {
+			fmt.Fprintln(stdout)
+		}
+		progressMu.Unlock()
+		fmt.Fprintf(stdout, "%s 内网目标扫描完成，耗时 %s\n",
+			colorize("提示:", colorCyan, color), time.Since(scanStart).Round(time.Millisecond))
+		printTargetScanSummary(stdout, result, len(opts.targets), color)
+	}
 
 	if !opts.quiet {
 		printFindings(stdout, result, color)
@@ -101,6 +171,62 @@ func Run(args []string, stdout, stderr io.Writer, cfg Config) int {
 	return int(result.MaxSeverity)
 }
 
+type targetScanSummary struct {
+	TotalTargets    int
+	DiscoveredHosts []string
+	CriticalHosts   []string
+}
+
+func summarizeTargetScan(result *scanner.ScanResult, totalTargets int) targetScanSummary {
+	summary := targetScanSummary{TotalTargets: totalTargets}
+	discovered := make(map[string]struct{})
+	critical := make(map[string]struct{})
+
+	for _, finding := range result.Findings {
+		target, ok := finding.Details["target"]
+		if !ok || strings.TrimSpace(target) == "" {
+			continue
+		}
+		discovered[target] = struct{}{}
+		if finding.Severity == scanner.Critical {
+			critical[target] = struct{}{}
+		}
+	}
+
+	for host := range discovered {
+		summary.DiscoveredHosts = append(summary.DiscoveredHosts, host)
+	}
+	for host := range critical {
+		summary.CriticalHosts = append(summary.CriticalHosts, host)
+	}
+
+	slices.Sort(summary.DiscoveredHosts)
+	slices.Sort(summary.CriticalHosts)
+	return summary
+}
+
+func printTargetScanSummary(w io.Writer, result *scanner.ScanResult, totalTargets int, color bool) {
+	summary := summarizeTargetScan(result, totalTargets)
+	fmt.Fprintf(w, "%s 扫描目标总数: %d，发现主机: %d，高危主机: %d\n",
+		colorize("统计:", colorCyan, color),
+		summary.TotalTargets,
+		len(summary.DiscoveredHosts),
+		len(summary.CriticalHosts),
+	)
+
+	if len(summary.DiscoveredHosts) == 0 {
+		fmt.Fprintf(w, "%s 本次未发现内网 OpenClaw 网关暴露主机。\n", colorize("统计:", colorCyan, color))
+		return
+	}
+
+	fmt.Fprintf(w, "%s 发现主机 IP: %s\n",
+		colorize("统计:", colorCyan, color), strings.Join(summary.DiscoveredHosts, ", "))
+	if len(summary.CriticalHosts) > 0 {
+		fmt.Fprintf(w, "%s 高危主机 IP: %s\n",
+			colorize("统计:", colorCyan, color), strings.Join(summary.CriticalHosts, ", "))
+	}
+}
+
 func parseOptions(args []string, stderr io.Writer) (options, error) {
 	var (
 		opts      options
@@ -115,6 +241,13 @@ func parseOptions(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&formatRaw, "format", string(report.FormatHTML), "输出格式: html, json")
 	fs.BoolVar(&opts.noOpen, "no-open", false, "不自动打开浏览器")
 	fs.StringVar(&opts.openclawHome, "openclaw-home", "", "指定 OpenClaw 目录")
+	var targetSpec string
+	fs.StringVar(&targetSpec, "targets", "", "指定扫描目标 IP/网段，支持逗号分隔（如 192.168.1.10,192.168.1.0/24）")
+	fs.IntVar(&opts.workers, "workers", 64, "内网目标扫描并发数")
+	fs.DurationVar(&opts.targetTimeout, "target-timeout", 800*time.Millisecond, "内网目标连接超时时间（如 800ms, 2s）")
+	fs.IntVar(&opts.progressEvery, "progress-every", 10, "每处理 N 个目标输出一次实时进度")
+	fs.BoolVar(&opts.localOnly, "local-only", false, "仅执行本机扫描，跳过 targets 远程探测")
+	fs.BoolVar(&opts.remoteOnly, "remote-only", false, "仅执行 targets 远程探测，跳过本机扫描")
 	fs.BoolVar(&opts.quiet, "q", false, "静默模式，仅返回退出码")
 	fs.BoolVar(&opts.quiet, "quiet", false, "静默模式，仅返回退出码")
 	fs.BoolVar(&opts.showVersion, "v", false, "显示版本号")
@@ -132,6 +265,27 @@ func parseOptions(args []string, stderr io.Writer) (options, error) {
 		return opts, err
 	}
 	opts.format = format
+
+	targets, err := scanner.ParseTargets(targetSpec)
+	if err != nil {
+		return opts, err
+	}
+	opts.targets = targets
+	if opts.workers <= 0 {
+		return opts, fmt.Errorf("workers 必须大于 0")
+	}
+	if opts.targetTimeout <= 0 {
+		return opts, fmt.Errorf("target-timeout 必须大于 0")
+	}
+	if opts.progressEvery <= 0 {
+		return opts, fmt.Errorf("progress-every 必须大于 0")
+	}
+	if opts.localOnly && opts.remoteOnly {
+		return opts, fmt.Errorf("local-only 与 remote-only 不能同时使用")
+	}
+	if opts.remoteOnly && len(opts.targets) == 0 {
+		return opts, fmt.Errorf("remote-only 模式必须配合 --targets 使用")
+	}
 
 	return opts, nil
 }
