@@ -9,8 +9,13 @@ import (
 )
 
 type scanContext struct {
-	Platform platform.Platform
-	HomeDir  string
+	Platform           platform.Platform
+	HomeDir            string
+	RemoteTargets      []string
+	RemoteWorkers      int
+	RemoteDialTimeout  time.Duration
+	RemoteProgressStep int
+	RemoteProgress     func(done, total int)
 }
 
 type scanCheck struct {
@@ -28,8 +33,22 @@ type Scanner struct {
 
 // New creates a scanner. If homeDir is empty, it uses the platform default
 // or the OPENCLAW_HOME environment variable.
-func New(plat platform.Platform, homeDir string) *Scanner {
-	return newWithChecks(plat, homeDir, defaultChecks()...)
+func New(
+	plat platform.Platform,
+	homeDir string,
+	remoteTargets []string,
+	remoteWorkers int,
+	remoteDialTimeout time.Duration,
+	remoteProgressStep int,
+	remoteProgress func(done, total int),
+) *Scanner {
+	s := newWithChecks(plat, homeDir, defaultChecks()...)
+	s.context.RemoteTargets = remoteTargets
+	s.context.RemoteWorkers = remoteWorkers
+	s.context.RemoteDialTimeout = remoteDialTimeout
+	s.context.RemoteProgressStep = remoteProgressStep
+	s.context.RemoteProgress = remoteProgress
+	return s
 }
 
 func newWithChecks(plat platform.Platform, homeDir string, checks ...scanCheck) *Scanner {
@@ -113,7 +132,21 @@ func defaultChecks() []scanCheck {
 		{
 			name: "network",
 			run: func(ctx scanContext) ([]Finding, error) {
-				return ScanNetwork(nil)
+				findings, err := ScanNetwork(nil)
+				if err != nil {
+					return nil, err
+				}
+				remoteFindings, err := ScanTargetNetwork(ctx.RemoteTargets, nil, nil, &TargetScanOptions{
+					Workers:       ctx.RemoteWorkers,
+					DialTimeout:   ctx.RemoteDialTimeout,
+					HTTPTimeout:   ctx.RemoteDialTimeout,
+					ProgressEvery: ctx.RemoteProgressStep,
+					Progress:      ctx.RemoteProgress,
+				})
+				if err != nil {
+					return nil, err
+				}
+				return append(findings, remoteFindings...), nil
 			},
 		},
 	}
