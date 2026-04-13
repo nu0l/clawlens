@@ -16,25 +16,49 @@ const (
 	remoteDialTimeout = 800 * time.Millisecond
 	remoteHTTPTimeout = 1200 * time.Millisecond
 	remoteWorkers     = 64
+	progressEveryN    = 10
 )
 
-// ScanTargetNetwork checks specified IP targets for OpenClaw gateway exposure and auth risks.
-func ScanTargetNetwork(targets []string, dial dialFunc, client *http.Client) ([]Finding, error) {
-	return scanTargetNetwork(targets, gatewayPort, dial, client, nil)
+type TargetScanOptions struct {
+	Workers       int
+	DialTimeout   time.Duration
+	HTTPTimeout   time.Duration
+	ProgressEvery int
+	Progress      func(done, total int)
 }
 
-func scanTargetNetwork(targets []string, port int, dial dialFunc, client *http.Client, progress func(done, total int)) ([]Finding, error) {
+// ScanTargetNetwork checks specified IP targets for OpenClaw gateway exposure and auth risks.
+func ScanTargetNetwork(targets []string, dial dialFunc, client *http.Client, opts *TargetScanOptions) ([]Finding, error) {
+	return scanTargetNetwork(targets, gatewayPort, dial, client, opts)
+}
+
+func scanTargetNetwork(targets []string, port int, dial dialFunc, client *http.Client, opts *TargetScanOptions) ([]Finding, error) {
 	if len(targets) == 0 {
 		return nil, nil
+	}
+	if opts == nil {
+		opts = &TargetScanOptions{}
 	}
 	if dial == nil {
 		dial = net.DialTimeout
 	}
+	if opts.DialTimeout <= 0 {
+		opts.DialTimeout = remoteDialTimeout
+	}
+	if opts.HTTPTimeout <= 0 {
+		opts.HTTPTimeout = remoteHTTPTimeout
+	}
+	if opts.ProgressEvery <= 0 {
+		opts.ProgressEvery = progressEveryN
+	}
 	if client == nil {
-		client = &http.Client{Timeout: remoteHTTPTimeout}
+		client = &http.Client{Timeout: opts.HTTPTimeout}
 	}
 
-	workerCount := remoteWorkers
+	workerCount := opts.Workers
+	if workerCount <= 0 {
+		workerCount = remoteWorkers
+	}
 	if len(targets) < workerCount {
 		workerCount = len(targets)
 	}
@@ -49,12 +73,14 @@ func scanTargetNetwork(targets []string, port int, dial dialFunc, client *http.C
 		go func() {
 			defer wg.Done()
 			for target := range jobs {
-				if finding, ok := scanSingleTarget(target, port, dial, client); ok {
+				if finding, ok := scanSingleTarget(target, port, dial, client, opts.DialTimeout); ok {
 					results <- finding
 				}
-				if progress != nil {
+				if opts.Progress != nil {
 					done := int(atomic.AddInt64(&doneCount, 1))
-					progress(done, len(targets))
+					if done == len(targets) || done%opts.ProgressEvery == 0 {
+						opts.Progress(done, len(targets))
+					}
 				}
 			}
 		}()
@@ -77,9 +103,9 @@ func scanTargetNetwork(targets []string, port int, dial dialFunc, client *http.C
 	return findings, nil
 }
 
-func scanSingleTarget(target string, port int, dial dialFunc, client *http.Client) (Finding, bool) {
+func scanSingleTarget(target string, port int, dial dialFunc, client *http.Client, dialTimeout time.Duration) (Finding, bool) {
 	address := net.JoinHostPort(target, strconv.Itoa(port))
-	conn, err := dial("tcp", address, remoteDialTimeout)
+	conn, err := dial("tcp", address, dialTimeout)
 	if err != nil {
 		return Finding{}, false
 	}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/clawlens/clawlens/internal/report"
+	"github.com/clawlens/clawlens/internal/scanner"
 )
 
 func TestParseOptionsRejectsInvalidFormat(t *testing.T) {
@@ -46,5 +47,32 @@ func TestParseOptionsParsesTargets(t *testing.T) {
 	}
 	if len(opts.targets) != 3 {
 		t.Fatalf("expected 3 targets, got %d", len(opts.targets))
+	}
+}
+
+func TestSummarizeTargetScan(t *testing.T) {
+	result := &scanner.ScanResult{Findings: []scanner.Finding{
+		{Severity: scanner.Warning, Details: map[string]string{"target": "172.31.0.10"}},
+		{Severity: scanner.Critical, Details: map[string]string{"target": "172.31.0.20"}},
+		{Severity: scanner.Critical, Details: map[string]string{"target": "172.31.0.20"}},
+		{Severity: scanner.Info, Details: map[string]string{"path": "/tmp/no-target"}},
+	}}
+
+	summary := summarizeTargetScan(result, 254)
+	if summary.TotalTargets != 254 {
+		t.Fatalf("expected TotalTargets 254, got %d", summary.TotalTargets)
+	}
+	if len(summary.DiscoveredHosts) != 2 {
+		t.Fatalf("expected 2 discovered hosts, got %d", len(summary.DiscoveredHosts))
+	}
+	if len(summary.CriticalHosts) != 1 || summary.CriticalHosts[0] != "172.31.0.20" {
+		t.Fatalf("unexpected critical hosts: %v", summary.CriticalHosts)
+	}
+}
+
+func TestParseOptionsRejectsInvalidWorkers(t *testing.T) {
+	_, err := parseOptions([]string{"--workers", "0"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "workers") {
+		t.Fatalf("expected workers validation error, got %v", err)
 	}
 }

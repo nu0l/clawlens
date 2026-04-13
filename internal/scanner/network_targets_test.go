@@ -17,7 +17,7 @@ func TestScanTargetNetworkDetectsOpenPort(t *testing.T) {
 		return nil, errors.New("refused")
 	}
 	client := &http.Client{Timeout: 100 * time.Millisecond}
-	findings, err := ScanTargetNetwork([]string{"192.168.1.5"}, dial, client)
+	findings, err := ScanTargetNetwork([]string{"192.168.1.5"}, dial, client, nil)
 	if err != nil {
 		t.Fatalf("ScanTargetNetwork error: %v", err)
 	}
